@@ -307,4 +307,41 @@ public class BoardController {
     public void enableShooting() {
         boardPane.setDisable(false);
     }
+
+    // ===================== MODO SOLO LECTURA (HU-3) =====================
+
+    public void setUpReadOnly(Board board) {
+        this.board = board;
+
+        if (shipsContainer != null) {
+            shipsContainer.setVisible(false);
+            shipsContainer.setManaged(false);
+        }
+        if (readyButton != null) {
+            readyButton.setVisible(false);
+            readyButton.setManaged(false);
+        }
+
+        drawReadOnlyGrid();
+    }
+
+    private void drawReadOnlyGrid() {
+        boardPane.getChildren().clear();
+        for (int row = 0; row < Board.SIZE; row++) {
+            for (int col = 0; col < Board.SIZE; col++) {
+                Rectangle cell = new Rectangle(CELL_SIZE, CELL_SIZE);
+                cell.setLayoutX(col * CELL_SIZE);
+                cell.setLayoutY(row * CELL_SIZE);
+
+                String state = board.getCell(new Position(row, col)).getState();
+                cell.setFill(state.equals(CellState.BARCO)
+                        ? Color.web("#415a77")   // celda con barco: se ve la flota del oponente
+                        : Color.web("#1b263b")); // celda vacía
+                cell.setStroke(Color.web("#00b4d8"));
+
+                // Sin manejadores de eventos: el tablero es puramente informativo.
+                boardPane.getChildren().add(cell);
+            }
+        }
+    }
 }
