@@ -3,7 +3,8 @@ package com.example.navabattlebsj.models;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Ship {
+public class Ship implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private String type;
     private String orientation;
     private int size;

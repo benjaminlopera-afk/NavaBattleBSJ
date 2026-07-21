@@ -4,6 +4,7 @@ import com.example.navabattlebsj.exceptions.GameAlreadyFinishedException;
 import com.example.navabattlebsj.exceptions.InvalidMoveException;
 import com.example.navabattlebsj.exceptions.InvalidShipPositionException;
 import com.example.navabattlebsj.models.*;
+import com.example.navabattlebsj.patterns.SaveFacade;
 import com.example.navabattlebsj.utils.Paths;
 import javafx.animation.PauseTransition;
 import javafx.fxml.FXML;
@@ -50,6 +51,7 @@ public class GameController {
 
     private Game game;
     private final Random random = new Random();
+    private final SaveFacade saveFacade = new SaveFacade();
 
     /**
      * Inicia una nueva partida: crea el jugador humano y la máquina,
@@ -142,11 +144,13 @@ public class GameController {
 
         mainBoardController.setUpShooting(
                 game.getMachine().getPositionBoard(),
+                this::autoSave,
                 this::onHumanTurnEnded,
                 this::onHumanVictory
         );
 
         statusLabel.setText("Tu turno: dispara en el tablero principal.");
+        autoSave();
     }
 
     /**
@@ -155,6 +159,7 @@ public class GameController {
      * autónoma sobre el tablero de posición del jugador.
      */
     private void onHumanTurnEnded() {
+        game.setHumanTurn(false);
         if (game.isFinished()) return;
         statusLabel.setText("Turno de la máquina...");
 
@@ -176,9 +181,11 @@ public class GameController {
         try {
             String result = humanBoard.receiveShot(target);
             positionBoardController.markCell(target.getRow(), target.getColumn(), result);
+            autoSave();
 
             if (humanBoard.isFleetSunk()) {
                 game.setFinished(true);
+                autoSave();
                 String message = "La máquina ha hundido toda tu flota. ¡Perdiste!";
                 statusLabel.setText(message);
                 showGameOverAlert("Fin de la partida", message);
@@ -186,6 +193,7 @@ public class GameController {
             }
 
             if (result.equals(ShotResult.AGUA)) {
+                game.setHumanTurn(true);
                 statusLabel.setText("Turno de la máquina completado. Tu turno de nuevo.");
                 mainBoardController.enableShooting();
             } else {
@@ -221,6 +229,7 @@ public class GameController {
 
     private void onHumanVictory(String message) {
         game.setFinished(true);
+        autoSave();
         statusLabel.setText(message);
         showGameOverAlert("¡Victoria!", message);
     }
@@ -235,5 +244,13 @@ public class GameController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+    /**
+     * HU-5: guarda automáticamente el estado completo de la partida
+     * (tableros, flotas y turno actual) cada vez que se registra una jugada,
+     * ya sea del jugador humano o de la máquina.
+     */
+    private void autoSave() {
+        saveFacade.saveGame(game);
     }
 }

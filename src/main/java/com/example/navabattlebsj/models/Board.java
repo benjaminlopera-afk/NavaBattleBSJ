@@ -7,7 +7,8 @@ import com.example.navabattlebsj.exceptions.InvalidShipPositionException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Board {
+public class Board implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     public static final int SIZE = 10;
     private Cell[][] grid;
     private List<Ship> ships;

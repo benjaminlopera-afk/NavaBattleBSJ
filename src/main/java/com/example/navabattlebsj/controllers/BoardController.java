@@ -71,6 +71,7 @@ public class BoardController {
     private Runnable onPlacementComplete;
     private Runnable onTurnEnd;
     private Consumer<String> onVictory;
+    private Runnable onShotRegistered;
 
     @FXML
     public void initialize() {
@@ -260,8 +261,9 @@ public class BoardController {
      * @param onTurnEnd  callback ejecutado cuando el disparo es agua (termina el turno)
      * @param onVictory  callback ejecutado cuando se hunde toda la flota enemiga
      */
-    public void setUpShooting(Board enemyBoard, Runnable onTurnEnd, Consumer<String> onVictory) {
+    public void setUpShooting(Board enemyBoard, Runnable onShotRegistered, Runnable onTurnEnd, Consumer<String> onVictory) {
         this.board = enemyBoard;
+        this.onShotRegistered = onShotRegistered;
         this.onTurnEnd = onTurnEnd;
         this.onVictory = onVictory;
         drawShootableGrid();
@@ -293,6 +295,8 @@ public class BoardController {
         try {
             String result = board.receiveShot(new Position(row, col));
             markCell(row, col, result);
+
+            if (onShotRegistered != null) onShotRegistered.run();
 
             if (board.isFleetSunk()) {
                 if (onVictory != null) onVictory.accept("¡Has hundido toda la flota enemiga!");

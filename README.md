@@ -140,4 +140,4 @@ src
 ## Autores
 * **Benjamín Lopera** - 2515144
 * **Sebastián Martínez** - 2519817
-* **Jhony Alexander Moreno Gómez** - 2525112
+* **Jhonny Alexander Moreno Florez** - 2522112
