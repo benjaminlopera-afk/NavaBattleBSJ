@@ -1,4 +1,6 @@
-package com.example.navabattlebsj.model;
+package com.example.navabattlebsj.models;
+
+import com.example.navabattlebsj.patterns.ShipFactory;
 
 public abstract class Player {
     private String nickname;
@@ -8,7 +10,7 @@ public abstract class Player {
     public Player(String nickname) {
         this.nickname = nickname;
         this.positionBoard = new Board();
-        this.fleet = new Fleet();
+        this.fleet = new Fleet(ShipFactory.createFleet());
     }
 
     public String getNickname() { return nickname; }

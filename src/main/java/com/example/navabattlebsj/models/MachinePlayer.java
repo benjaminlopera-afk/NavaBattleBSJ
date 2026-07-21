@@ -1,4 +1,4 @@
-package com.example.navabattlebsj.model;
+package com.example.navabattlebsj.models;
 
 public class MachinePlayer extends Player {
     public MachinePlayer() {

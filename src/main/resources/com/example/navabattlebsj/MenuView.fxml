@@ -13,7 +13,7 @@
           AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0"
           AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0">
         <Label text="NavaBattle" style="-fx-font-size: 28px; -fx-font-weight: bold;"/>
-        <Button fx:id="newGameButton" text="Nueva Partida" prefWidth="180"/>
-        <Button fx:id="loadGameButton" text="Cargar Partida" prefWidth="180"/>
+        <Button fx:id="newGameButton" text="Nueva Partida" prefWidth="180" onAction="#handleNewGame"/>
+        <Button fx:id="loadGameButton" text="Cargar Partida" prefWidth="180" onAction="#handleLoadGame"/>
     </VBox>
 </AnchorPane>

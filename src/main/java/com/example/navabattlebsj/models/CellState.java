@@ -1,4 +1,4 @@
-package com.example.navabattlebsj.model;
+package com.example.navabattlebsj.models;
 
 public class CellState {
     public static final String VACIA = "VACIA";

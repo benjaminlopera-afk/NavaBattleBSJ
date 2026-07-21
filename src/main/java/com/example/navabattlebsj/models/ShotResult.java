@@ -1,4 +1,4 @@
-package com.example.navabattlebsj.model;
+package com.example.navabattlebsj.models;
 
 public class ShotResult {
     public static final String AGUA = "AGUA";
