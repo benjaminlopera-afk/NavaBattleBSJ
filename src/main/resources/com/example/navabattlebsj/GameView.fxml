@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<HBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.example.navabattlebsj.controllers.GameController"
+      spacing="30" alignment="CENTER" prefWidth="900" prefHeight="500">
+
+    <VBox spacing="10" alignment="CENTER">
+        <Label text="Tablero de Posición"/>
+        <GridPane fx:id="positionBoardGrid"/>
+    </VBox>
+
+    <VBox spacing="10" alignment="CENTER">
+        <Label text="Tablero Principal"/>
+        <GridPane fx:id="mainBoardGrid"/>
+    </VBox>
+
+</HBox>
