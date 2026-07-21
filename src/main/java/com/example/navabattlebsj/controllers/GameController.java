@@ -1,21 +1,37 @@
 package com.example.navabattlebsj.controllers;
 
+import com.example.navabattlebsj.exceptions.GameAlreadyFinishedException;
+import com.example.navabattlebsj.exceptions.InvalidMoveException;
 import com.example.navabattlebsj.exceptions.InvalidShipPositionException;
 import com.example.navabattlebsj.models.*;
 import com.example.navabattlebsj.utils.Paths;
+import javafx.animation.PauseTransition;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
+/**
+ * Controlador principal de la vista de juego. Coordina el tablero de posición
+ * del jugador, el tablero principal (disparo sobre la máquina), la opción de
+ * verificación del tablero del oponente (HU-3) y el turno autónomo de la
+ * máquina (HU-4).
+ */
 public class GameController {
+
+    /** Pausa entre cada disparo de la máquina, para que el jugador pueda seguir la jugada. */
+    private static final Duration MACHINE_SHOT_DELAY = Duration.seconds(0.6);
 
     @FXML
     private Label statusLabel;
@@ -33,7 +49,12 @@ public class GameController {
     private Button startBattleButton;
 
     private Game game;
+    private final Random random = new Random();
 
+    /**
+     * Inicia una nueva partida: crea el jugador humano y la máquina,
+     * y deja el tablero de posición listo para que el jugador coloque su flota.
+     */
     public void startNewGame() {
         HumanPlayer human = new HumanPlayer("Jugador");
         MachinePlayer machine = new MachinePlayer();
@@ -48,9 +69,12 @@ public class GameController {
         statusLabel.setText("Coloca tu flota para comenzar.");
     }
 
+    /**
+     * Se ejecuta cuando el jugador humano termina de colocar su flota.
+     * Coloca la flota de la máquina de forma aleatoria (HU-4) y habilita las
+     * opciones de verificación (HU-3) antes de comenzar la batalla.
+     */
     private void onHumanFleetReady() {
-        // TEMPORAL: colocación aleatoria básica solo para poder probar el HU-2.
-        // Se reemplaza formalmente por la IA de colocación en el HU-4.
         placeMachineFleetRandomly(game.getMachine().getPositionBoard(), game.getMachine().getFleet());
 
         viewOpponentButton.setDisable(false);
@@ -59,8 +83,12 @@ public class GameController {
         statusLabel.setText("Flota lista. Puedes verificar el tablero del oponente antes de comenzar.");
     }
 
+    /**
+     * HU-4: coloca la flota de la máquina de manera aleatoria, respetando las
+     * mismas reglas de validación que el jugador humano (sin superposiciones
+     * ni salirse del tablero).
+     */
     private void placeMachineFleetRandomly(Board board, Fleet fleet) {
-        Random random = new Random();
         for (Ship ship : fleet.getShips()) {
             boolean placed = false;
             while (!placed) {
@@ -77,6 +105,11 @@ public class GameController {
         }
     }
 
+    /**
+     * HU-3: abre una ventana modal de solo lectura mostrando el tablero de
+     * posición del oponente (máquina), únicamente disponible antes de iniciar
+     * la fase de disparo.
+     */
     @FXML
     private void handleViewOpponentBoard() {
         try {
@@ -96,6 +129,10 @@ public class GameController {
         }
     }
 
+    /**
+     * Cierra la fase de verificación (HU-3) y da inicio a la fase de disparo (HU-2),
+     * deshabilitando la opción de ver el tablero del oponente.
+     */
     @FXML
     private void handleStartBattle() {
         viewOpponentButton.setDisable(true);
@@ -105,23 +142,98 @@ public class GameController {
 
         mainBoardController.setUpShooting(
                 game.getMachine().getPositionBoard(),
-                this::onHumanMissedShot,
-                this::onVictory
+                this::onHumanTurnEnded,
+                this::onHumanVictory
         );
 
         statusLabel.setText("Tu turno: dispara en el tablero principal.");
     }
 
-    private void onHumanMissedShot() {
-        // TEMPORAL: como el HU-4 (turno real de la máquina) no existe todavía,
-        // simulamos que la máquina "ya jugó" y devolvemos el turno de inmediato,
-        // solo para poder seguir probando el HU-2. Esto se reemplaza en el HU-4
-        // por un disparo real de la máquina al tablero de posición del humano.
-        statusLabel.setText("Agua. (Simulado) Turno de la máquina completado. Tu turno de nuevo.");
-        mainBoardController.enableShooting();
+    /**
+     * HU-4: se ejecuta cuando el jugador humano falla un disparo (agua) y por
+     * tanto pierde el turno. A partir de aquí la máquina juega de forma
+     * autónoma sobre el tablero de posición del jugador.
+     */
+    private void onHumanTurnEnded() {
+        if (game.isFinished()) return;
+        statusLabel.setText("Turno de la máquina...");
+
+        PauseTransition initialPause = new PauseTransition(MACHINE_SHOT_DELAY);
+        initialPause.setOnFinished(e -> fireMachineShot());
+        initialPause.play();
     }
 
-    private void onVictory(String message) {
+    /**
+     * HU-4: dispara una posición aleatoria (sin repetir) sobre el tablero de
+     * posición del jugador humano y pinta el resultado en tiempo real. Si la
+     * máquina acierta (tocado u hundido) programa un nuevo disparo tras una
+     * breve pausa; si falla (agua) o hunde toda la flota, termina el turno.
+     */
+    private void fireMachineShot() {
+        Board humanBoard = game.getHuman().getPositionBoard();
+        Position target = pickRandomUnshotPosition(humanBoard);
+
+        try {
+            String result = humanBoard.receiveShot(target);
+            positionBoardController.markCell(target.getRow(), target.getColumn(), result);
+
+            if (humanBoard.isFleetSunk()) {
+                game.setFinished(true);
+                String message = "La máquina ha hundido toda tu flota. ¡Perdiste!";
+                statusLabel.setText(message);
+                showGameOverAlert("Fin de la partida", message);
+                return;
+            }
+
+            if (result.equals(ShotResult.AGUA)) {
+                statusLabel.setText("Turno de la máquina completado. Tu turno de nuevo.");
+                mainBoardController.enableShooting();
+            } else {
+                PauseTransition pause = new PauseTransition(MACHINE_SHOT_DELAY);
+                pause.setOnFinished(e -> fireMachineShot());
+                pause.play();
+            }
+
+        } catch (InvalidMoveException | GameAlreadyFinishedException e) {
+            // No debería ocurrir porque solo elegimos celdas no disparadas,
+            // pero por seguridad se reintenta con otra posición.
+            fireMachineShot();
+        }
+    }
+
+    /**
+     * Selecciona al azar una posición del tablero que todavía no haya recibido
+     * disparo (celda VACIA o BARCO, es decir, distinta de AGUA/TOCADO/HUNDIDO).
+     */
+    private Position pickRandomUnshotPosition(Board board) {
+        List<Position> candidates = new ArrayList<>();
+        for (int row = 0; row < Board.SIZE; row++) {
+            for (int col = 0; col < Board.SIZE; col++) {
+                Position p = new Position(row, col);
+                String state = board.getCell(p).getState();
+                if (state.equals(CellState.VACIA) || state.equals(CellState.BARCO)) {
+                    candidates.add(p);
+                }
+            }
+        }
+        return candidates.get(random.nextInt(candidates.size()));
+    }
+
+    private void onHumanVictory(String message) {
+        game.setFinished(true);
         statusLabel.setText(message);
+        showGameOverAlert("¡Victoria!", message);
+    }
+
+    /**
+     * Muestra un cuadro de diálogo informativo al finalizar la partida,
+     * ya sea por victoria del jugador o por derrota ante la máquina.
+     */
+    private void showGameOverAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }
