@@ -23,7 +23,11 @@ public class NavaBattleApplication extends Application {
         FXMLLoader loader = new FXMLLoader(NavaBattleApplication.class.getResource(path));
         try {
             Parent root = loader.load();
-            stageWindow.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            scene.getStylesheets().add(
+                    NavaBattleApplication.class.getResource("/Styles.css").toExternalForm()
+            );
+            stageWindow.setScene(scene);
             stageWindow.setTitle(title);
             stageWindow.show();
             return loader.getController();

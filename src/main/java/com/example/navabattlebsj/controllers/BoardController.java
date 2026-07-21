@@ -1,5 +1,7 @@
 package com.example.navabattlebsj.controllers;
 
+import com.example.navabattlebsj.exceptions.GameAlreadyFinishedException;
+import com.example.navabattlebsj.exceptions.InvalidMoveException;
 import com.example.navabattlebsj.exceptions.InvalidShipPositionException;
 import com.example.navabattlebsj.models.*;
 import javafx.fxml.FXML;
@@ -10,9 +12,13 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Text;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Font;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class BoardController {
 
@@ -30,6 +36,7 @@ public class BoardController {
     private Board board;
     private Fleet fleet;
     private Map<Rectangle, Ship> shipShapes;
+    private Rectangle[][] cellShapes;
 
     private Ship draggingShip;
     private Rectangle draggingShape;
@@ -37,14 +44,16 @@ public class BoardController {
     private double dragOffsetY;
 
     private Runnable onPlacementComplete;
+    private Runnable onTurnEnd;
+    private Consumer<String> onVictory;
 
     @FXML
     public void initialize() {
         shipShapes = new HashMap<>();
     }
 
-    // Llamado desde GameController tras cargar esta vista, para
-    // inyectarle el tablero y la flota del jugador que va a colocar barcos.
+    // ===================== MODO COLOCACIÓN (HU-1) =====================
+
     public void setUpPlacement(Board board, Fleet fleet) {
         this.board = board;
         this.fleet = fleet;
@@ -52,8 +61,6 @@ public class BoardController {
         drawDraggableShips(fleet);
     }
 
-    // Permite que el GameController se entere cuando el jugador termina de
-    // colocar toda su flota y confirma con el botón "Listo".
     public void setOnPlacementComplete(Runnable callback) {
         this.onPlacementComplete = callback;
     }
@@ -65,8 +72,8 @@ public class BoardController {
                 Rectangle cell = new Rectangle(CELL_SIZE, CELL_SIZE);
                 cell.setLayoutX(col * CELL_SIZE);
                 cell.setLayoutY(row * CELL_SIZE);
-                cell.setFill(Color.LIGHTBLUE);
-                cell.setStroke(Color.DARKBLUE);
+                cell.setFill(Color.web("#1b263b"));
+                cell.setStroke(Color.web("#00b4d8"));
                 boardPane.getChildren().add(cell);
             }
         }
@@ -88,8 +95,8 @@ public class BoardController {
         double height = horizontal ? CELL_SIZE : ship.getSize() * CELL_SIZE;
 
         Rectangle shape = new Rectangle(width, height);
-        shape.setFill(Color.GRAY);
-        shape.setStroke(Color.BLACK);
+        shape.setFill(Color.web("#415a77"));
+        shape.setStroke(Color.web("#00b4d8"));
         return shape;
     }
 
@@ -105,6 +112,11 @@ public class BoardController {
     }
 
     private void handleMousePressed(MouseEvent event) {
+        // Solo el click izquierdo inicia el arrastre; el derecho queda libre para rotar.
+        if (event.getButton() != MouseButton.PRIMARY) {
+            return;
+        }
+
         Rectangle shape = (Rectangle) event.getSource();
         draggingShape = shape;
         draggingShip = shipShapes.get(shape);
@@ -112,7 +124,6 @@ public class BoardController {
         dragOffsetX = event.getX();
         dragOffsetY = event.getY();
 
-        // Se pasa el barco al Pane del tablero para poder moverlo libremente sobre él.
         if (shipsContainer.getChildren().contains(shape)) {
             shipsContainer.getChildren().remove(shape);
             boardPane.getChildren().add(shape);
@@ -152,7 +163,7 @@ public class BoardController {
     private void snapShipToBoard(Rectangle shape, Position position) {
         shape.setLayoutX(position.getColumn() * CELL_SIZE);
         shape.setLayoutY(position.getRow() * CELL_SIZE);
-        shape.setFill(Color.DARKGRAY);
+        shape.setFill(Color.web("#2c3e50"));
     }
 
     private void disableDragging(Rectangle shape) {
@@ -199,5 +210,101 @@ public class BoardController {
         readyButton.setDisable(true);
         boardPane.setDisable(true);
         shipsContainer.setDisable(true);
+    }
+
+    // ===================== MODO DISPARO (HU-2) =====================
+
+    public void setUpShooting(Board enemyBoard, Runnable onTurnEnd, Consumer<String> onVictory) {
+        this.board = enemyBoard;
+        this.onTurnEnd = onTurnEnd;
+        this.onVictory = onVictory;
+        drawShootableGrid();
+    }
+
+    private void drawShootableGrid() {
+        boardPane.getChildren().clear();
+        cellShapes = new Rectangle[Board.SIZE][Board.SIZE];
+
+        for (int row = 0; row < Board.SIZE; row++) {
+            for (int col = 0; col < Board.SIZE; col++) {
+                Rectangle cell = new Rectangle(CELL_SIZE, CELL_SIZE);
+                cell.setLayoutX(col * CELL_SIZE);
+                cell.setLayoutY(row * CELL_SIZE);
+                cell.setFill(Color.web("#0f3460"));
+                cell.setStroke(Color.web("#1a1a2e"));
+
+                int r = row;
+                int c = col;
+                cell.setOnMouseClicked(event -> handleShot(r, c));
+
+                cellShapes[row][col] = cell;
+                boardPane.getChildren().add(cell);
+            }
+        }
+    }
+
+    private void handleShot(int row, int col) {
+        try {
+            String result = board.receiveShot(new Position(row, col));
+            paintShotResult(row, col, result);
+
+            if (board.isFleetSunk()) {
+                if (onVictory != null) onVictory.accept("¡Has hundido toda la flota enemiga!");
+                return;
+            }
+
+            if (result.equals(ShotResult.AGUA)) {
+                boardPane.setDisable(true); // el turno termina: se bloquea hasta que vuelva a ser tu turno
+                if (onTurnEnd != null) onTurnEnd.run();
+            }
+
+        } catch (InvalidMoveException e) {
+            // Ya se disparó en esa celda; se ignora el clic.
+        } catch (GameAlreadyFinishedException e) {
+            // La partida ya terminó; se ignora el clic.
+        }
+    }
+
+    private void paintShotResult(int row, int col, String result) {
+        Rectangle cell = cellShapes[row][col];
+        String symbol;
+        Color symbolColor;
+
+        switch (result) {
+            case ShotResult.AGUA -> {
+                symbol = "X";
+                symbolColor = Color.web("#e0e1dd");
+                cell.setFill(Color.web("#1b263b"));
+            }
+            case ShotResult.TOCADO -> {
+                symbol = "●";
+                symbolColor = Color.BLACK;
+                cell.setFill(Color.web("#f4a261"));
+            }
+            case ShotResult.HUNDIDO -> {
+                symbol = "🔥";
+                symbolColor = Color.WHITE;
+                cell.setFill(Color.web("#ff6b6b"));
+            }
+            default -> {
+                symbol = "";
+                symbolColor = Color.BLACK;
+            }
+        }
+
+        Text mark = new Text(symbol);
+        mark.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        mark.setFill(symbolColor);
+        mark.setLayoutX(cell.getLayoutX() + CELL_SIZE / 2.0 - 8);
+        mark.setLayoutY(cell.getLayoutY() + CELL_SIZE / 2.0 + 6);
+        boardPane.getChildren().add(mark);
+
+        cell.setOnMouseClicked(null);
+    }
+
+    // Habilita de nuevo el disparo cuando vuelve a ser el turno del jugador.
+    // Se llamará desde GameController al terminar el turno de la máquina (HU-4).
+    public void enableShooting() {
+        boardPane.setDisable(false);
     }
 }

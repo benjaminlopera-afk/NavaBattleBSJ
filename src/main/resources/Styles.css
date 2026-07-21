@@ -1,0 +1,74 @@
+.root {
+    -bg-color: #0d1b2a;
+    -accent-primary: #00b4d8;
+    -accent-secondary: #ff6b6b;
+    -container-bg: #1b263b;
+    -text-light: #e0e1dd;
+
+    -fx-background-color: -bg-color;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* ===================== TÍTULOS Y TEXTOS ===================== */
+
+.title-label {
+    -fx-font-size: 44px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -accent-primary;
+}
+
+.status-label {
+    -fx-font-size: 16px;
+    -fx-text-fill: -text-light;
+}
+
+.section-label {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-light;
+}
+
+/* ===================== BOTONES ===================== */
+
+.button-primary {
+    -fx-background-color: -accent-primary;
+    -fx-text-fill: #0d1b2a;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 24px;
+    -fx-padding: 10 28 10 28;
+    -fx-cursor: hand;
+}
+
+.button-primary:hover {
+    -fx-background-color: derive(-accent-primary, 15%);
+}
+
+.button-secondary {
+    -fx-background-color: -container-bg;
+    -fx-text-fill: -text-light;
+    -fx-font-size: 13px;
+    -fx-background-radius: 24px;
+    -fx-padding: 8 22 8 22;
+    -fx-border-color: -accent-primary;
+    -fx-border-radius: 24px;
+    -fx-border-width: 1px;
+    -fx-cursor: hand;
+}
+
+.button-secondary:hover {
+    -fx-background-color: derive(-container-bg, 20%);
+}
+
+.button-secondary:disabled {
+    -fx-opacity: 0.4;
+    -fx-cursor: default;
+}
+
+/* ===================== CONTENEDORES ===================== */
+
+.board-container {
+    -fx-background-color: -container-bg;
+    -fx-background-radius: 12px;
+    -fx-padding: 12px;
+}

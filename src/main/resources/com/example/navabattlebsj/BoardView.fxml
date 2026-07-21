@@ -11,6 +11,6 @@
 
     <Pane fx:id="boardPane" prefWidth="400" prefHeight="400"/>
     <HBox fx:id="shipsContainer" spacing="10" alignment="CENTER"/>
-    <Button fx:id="readyButton" text="Listo" disable="true" onAction="#handleReady"/>
+    <Button fx:id="readyButton" text="Listo" styleClass="button-primary" disable="true" onAction="#handleReady"/>
 
 </VBox>

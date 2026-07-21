@@ -1,5 +1,7 @@
 package com.example.navabattlebsj.models;
 
+import com.example.navabattlebsj.exceptions.GameAlreadyFinishedException;
+import com.example.navabattlebsj.exceptions.InvalidMoveException;
 import com.example.navabattlebsj.exceptions.InvalidShipPositionException;
 
 import java.util.ArrayList;
@@ -35,7 +37,6 @@ public class Board {
     public void placeShip(Ship ship, Position start) throws InvalidShipPositionException {
         List<Position> positions = ship.computePositions(start);
 
-        // 1. Validar que todas las casillas estén dentro del tablero
         for (Position p : positions) {
             if (!isInsideBoard(p)) {
                 throw new InvalidShipPositionException(
@@ -43,7 +44,6 @@ public class Board {
             }
         }
 
-        // 2. Validar que ninguna casilla esté ocupada por otro barco
         for (Position p : positions) {
             if (getCell(p).getState().equals(CellState.BARCO)) {
                 throw new InvalidShipPositionException(
@@ -51,11 +51,58 @@ public class Board {
             }
         }
 
-        // 3. Si todo es válido, se coloca el barco
         ship.place(positions);
         for (Position p : positions) {
             getCell(p).setState(CellState.BARCO);
         }
         ships.add(ship);
+    }
+
+    public String receiveShot(Position position) throws InvalidMoveException, GameAlreadyFinishedException {
+        if (isFleetSunk()) {
+            throw new GameAlreadyFinishedException("La flota ya fue hundida por completo, la partida terminó.");
+        }
+
+        Cell cell = getCell(position);
+        String state = cell.getState();
+
+        if (state.equals(CellState.AGUA) || state.equals(CellState.TOCADO) || state.equals(CellState.HUNDIDO)) {
+            throw new InvalidMoveException("Ya se disparó anteriormente en esta posición.");
+        }
+
+        if (state.equals(CellState.VACIA)) {
+            cell.setState(CellState.AGUA);
+            return ShotResult.AGUA;
+        }
+
+        Ship ship = findShipAt(position);
+        ship.registerHit();
+
+        if (ship.isSunk()) {
+            markShipCells(ship, CellState.HUNDIDO);
+            return ShotResult.HUNDIDO;
+        } else {
+            cell.setState(CellState.TOCADO);
+            return ShotResult.TOCADO;
+        }
+    }
+
+    private Ship findShipAt(Position position) {
+        for (Ship ship : ships) {
+            if (ship.getOccupiedPositions().contains(position)) {
+                return ship;
+            }
+        }
+        return null;
+    }
+
+    private void markShipCells(Ship ship, String state) {
+        for (Position p : ship.getOccupiedPositions()) {
+            getCell(p).setState(state);
+        }
+    }
+
+    public boolean isFleetSunk() {
+        return !ships.isEmpty() && ships.stream().allMatch(Ship::isSunk);
     }
 }
