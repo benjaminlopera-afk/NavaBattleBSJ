@@ -2,9 +2,17 @@ package com.example.navabattlebsj.controllers;
 
 import com.example.navabattlebsj.exceptions.InvalidShipPositionException;
 import com.example.navabattlebsj.models.*;
+import com.example.navabattlebsj.utils.Paths;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.util.Random;
 
 public class GameController {
@@ -18,6 +26,12 @@ public class GameController {
     @FXML
     private BoardController mainBoardController;
 
+    @FXML
+    private Button viewOpponentButton;
+
+    @FXML
+    private Button startBattleButton;
+
     private Game game;
 
     public void startNewGame() {
@@ -28,6 +42,9 @@ public class GameController {
         positionBoardController.setUpPlacement(human.getPositionBoard(), human.getFleet());
         positionBoardController.setOnPlacementComplete(this::onHumanFleetReady);
 
+        if (viewOpponentButton != null) viewOpponentButton.setDisable(true);
+        if (startBattleButton != null) startBattleButton.setDisable(true);
+
         statusLabel.setText("Coloca tu flota para comenzar.");
     }
 
@@ -36,13 +53,10 @@ public class GameController {
         // Se reemplaza formalmente por la IA de colocación en el HU-4.
         placeMachineFleetRandomly(game.getMachine().getPositionBoard(), game.getMachine().getFleet());
 
-        mainBoardController.setUpShooting(
-                game.getMachine().getPositionBoard(),
-                this::onHumanMissedShot,
-                this::onVictory
-        );
+        viewOpponentButton.setDisable(false);
+        startBattleButton.setDisable(false);
 
-        statusLabel.setText("Tu turno: dispara en el tablero principal.");
+        statusLabel.setText("Flota lista. Puedes verificar el tablero del oponente antes de comenzar.");
     }
 
     private void placeMachineFleetRandomly(Board board, Fleet fleet) {
@@ -61,6 +75,41 @@ public class GameController {
                 }
             }
         }
+    }
+
+    @FXML
+    private void handleViewOpponentBoard() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(Paths.BOARD_VIEW));
+            Parent root = loader.load();
+
+            BoardController readOnlyController = loader.getController();
+            readOnlyController.setUpReadOnly(game.getMachine().getPositionBoard());
+
+            Stage popup = new Stage();
+            popup.setTitle("Verificación - Tablero del Oponente");
+            popup.initModality(Modality.APPLICATION_MODAL);
+            popup.setScene(new Scene(root));
+            popup.showAndWait();
+        } catch (IOException e) {
+            throw new RuntimeException("No se pudo cargar el tablero del oponente", e);
+        }
+    }
+
+    @FXML
+    private void handleStartBattle() {
+        viewOpponentButton.setDisable(true);
+        startBattleButton.setDisable(true);
+        viewOpponentButton.setVisible(false);
+        startBattleButton.setVisible(false);
+
+        mainBoardController.setUpShooting(
+                game.getMachine().getPositionBoard(),
+                this::onHumanMissedShot,
+                this::onVictory
+        );
+
+        statusLabel.setText("Tu turno: dispara en el tablero principal.");
     }
 
     private void onHumanMissedShot() {
