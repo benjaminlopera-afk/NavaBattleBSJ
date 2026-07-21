@@ -20,9 +20,34 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
+/**
+ * Controlador de un tablero individual (10x10). Soporta cuatro modos de uso:
+ * <ul>
+ *     <li><b>Colocación</b> (HU-1): permite arrastrar y rotar barcos sobre el tablero.</li>
+ *     <li><b>Disparo</b> (HU-2): permite hacer clic en las celdas para disparar.</li>
+ *     <li><b>Solo lectura</b> (HU-3): muestra el estado de un tablero sin permitir interacción,
+ *     usado para verificar la colocación de la flota del oponente.</li>
+ *     <li><b>Observación de impactos</b> (HU-4): permite pintar en el tablero de posición
+ *     del jugador los disparos recibidos de la máquina, sin permitir interacción.</li>
+ * </ul>
+ */
 public class BoardController {
 
     private static final int CELL_SIZE = 40;
+
+    // ===================== PALETA DEL TABLERO =====================
+    // Coincide con las variables definidas en Styles.css (-water-color,
+    // -ship-color, -ship-placed-color, -border-color, -warning, -error,
+    // -text-light, -text-secondary).
+    private static final Color WATER_COLOR = Color.web("#0B2545");
+    private static final Color SHIP_COLOR = Color.web("#64748B");
+    private static final Color SHIP_PLACED_COLOR = Color.web("#475569");
+    private static final Color GRID_BORDER_COLOR = Color.web("#334155");
+    private static final Color HIT_COLOR = Color.web("#F59E0B");   // -warning
+    private static final Color SUNK_COLOR = Color.web("#EF4444");  // -error
+    private static final Color MISS_SYMBOL_COLOR = Color.web("#CBD5E1"); // -text-secondary
+    private static final Color HIT_SYMBOL_COLOR = Color.web("#0F172A");  // -bg-color (contraste sobre ámbar)
+    private static final Color SUNK_SYMBOL_COLOR = Color.web("#F8FAFC"); // -text-light
 
     @FXML
     private Pane boardPane;
@@ -54,6 +79,13 @@ public class BoardController {
 
     // ===================== MODO COLOCACIÓN (HU-1) =====================
 
+    /**
+     * Configura este tablero en modo colocación, permitiendo al jugador
+     * arrastrar y rotar los barcos de su flota.
+     *
+     * @param board tablero de posición del jugador
+     * @param fleet flota a colocar
+     */
     public void setUpPlacement(Board board, Fleet fleet) {
         this.board = board;
         this.fleet = fleet;
@@ -61,19 +93,26 @@ public class BoardController {
         drawDraggableShips(fleet);
     }
 
+    /**
+     * Registra el callback a ejecutar cuando el jugador termina de colocar su flota.
+     *
+     * @param callback acción a ejecutar al finalizar la colocación
+     */
     public void setOnPlacementComplete(Runnable callback) {
         this.onPlacementComplete = callback;
     }
 
     private void drawEmptyGrid() {
         boardPane.getChildren().clear();
+        cellShapes = new Rectangle[Board.SIZE][Board.SIZE];
         for (int row = 0; row < Board.SIZE; row++) {
             for (int col = 0; col < Board.SIZE; col++) {
                 Rectangle cell = new Rectangle(CELL_SIZE, CELL_SIZE);
                 cell.setLayoutX(col * CELL_SIZE);
                 cell.setLayoutY(row * CELL_SIZE);
-                cell.setFill(Color.web("#1b263b"));
-                cell.setStroke(Color.web("#00b4d8"));
+                cell.setFill(WATER_COLOR);
+                cell.setStroke(GRID_BORDER_COLOR);
+                cellShapes[row][col] = cell;
                 boardPane.getChildren().add(cell);
             }
         }
@@ -95,8 +134,8 @@ public class BoardController {
         double height = horizontal ? CELL_SIZE : ship.getSize() * CELL_SIZE;
 
         Rectangle shape = new Rectangle(width, height);
-        shape.setFill(Color.web("#415a77"));
-        shape.setStroke(Color.web("#00b4d8"));
+        shape.setFill(SHIP_COLOR);
+        shape.setStroke(GRID_BORDER_COLOR);
         return shape;
     }
 
@@ -163,7 +202,7 @@ public class BoardController {
     private void snapShipToBoard(Rectangle shape, Position position) {
         shape.setLayoutX(position.getColumn() * CELL_SIZE);
         shape.setLayoutY(position.getRow() * CELL_SIZE);
-        shape.setFill(Color.web("#2c3e50"));
+        shape.setFill(SHIP_PLACED_COLOR);
     }
 
     private void disableDragging(Rectangle shape) {
@@ -214,6 +253,13 @@ public class BoardController {
 
     // ===================== MODO DISPARO (HU-2) =====================
 
+    /**
+     * Configura este tablero en modo disparo sobre el tablero del oponente.
+     *
+     * @param enemyBoard tablero del oponente a atacar
+     * @param onTurnEnd  callback ejecutado cuando el disparo es agua (termina el turno)
+     * @param onVictory  callback ejecutado cuando se hunde toda la flota enemiga
+     */
     public void setUpShooting(Board enemyBoard, Runnable onTurnEnd, Consumer<String> onVictory) {
         this.board = enemyBoard;
         this.onTurnEnd = onTurnEnd;
@@ -230,8 +276,8 @@ public class BoardController {
                 Rectangle cell = new Rectangle(CELL_SIZE, CELL_SIZE);
                 cell.setLayoutX(col * CELL_SIZE);
                 cell.setLayoutY(row * CELL_SIZE);
-                cell.setFill(Color.web("#0f3460"));
-                cell.setStroke(Color.web("#1a1a2e"));
+                cell.setFill(WATER_COLOR);
+                cell.setStroke(GRID_BORDER_COLOR);
 
                 int r = row;
                 int c = col;
@@ -246,7 +292,7 @@ public class BoardController {
     private void handleShot(int row, int col) {
         try {
             String result = board.receiveShot(new Position(row, col));
-            paintShotResult(row, col, result);
+            markCell(row, col, result);
 
             if (board.isFleetSunk()) {
                 if (onVictory != null) onVictory.accept("¡Has hundido toda la flota enemiga!");
@@ -265,51 +311,21 @@ public class BoardController {
         }
     }
 
-    private void paintShotResult(int row, int col, String result) {
-        Rectangle cell = cellShapes[row][col];
-        String symbol;
-        Color symbolColor;
-
-        switch (result) {
-            case ShotResult.AGUA -> {
-                symbol = "X";
-                symbolColor = Color.web("#e0e1dd");
-                cell.setFill(Color.web("#1b263b"));
-            }
-            case ShotResult.TOCADO -> {
-                symbol = "●";
-                symbolColor = Color.BLACK;
-                cell.setFill(Color.web("#f4a261"));
-            }
-            case ShotResult.HUNDIDO -> {
-                symbol = "🔥";
-                symbolColor = Color.WHITE;
-                cell.setFill(Color.web("#ff6b6b"));
-            }
-            default -> {
-                symbol = "";
-                symbolColor = Color.BLACK;
-            }
-        }
-
-        Text mark = new Text(symbol);
-        mark.setFont(Font.font("Arial", FontWeight.BOLD, 18));
-        mark.setFill(symbolColor);
-        mark.setLayoutX(cell.getLayoutX() + CELL_SIZE / 2.0 - 8);
-        mark.setLayoutY(cell.getLayoutY() + CELL_SIZE / 2.0 + 6);
-        boardPane.getChildren().add(mark);
-
-        cell.setOnMouseClicked(null);
-    }
-
     // Habilita de nuevo el disparo cuando vuelve a ser el turno del jugador.
-    // Se llamará desde GameController al terminar el turno de la máquina (HU-4).
     public void enableShooting() {
         boardPane.setDisable(false);
     }
 
     // ===================== MODO SOLO LECTURA (HU-3) =====================
 
+    /**
+     * Configura este tablero en modo solo lectura, mostrando el estado actual
+     * de un tablero (barcos incluidos) sin permitir ninguna interacción.
+     * Se utiliza para verificar la colocación de la flota del oponente antes
+     * de iniciar la partida.
+     *
+     * @param board tablero a mostrar (normalmente el de posición de la máquina)
+     */
     public void setUpReadOnly(Board board) {
         this.board = board;
 
@@ -327,6 +343,7 @@ public class BoardController {
 
     private void drawReadOnlyGrid() {
         boardPane.getChildren().clear();
+        cellShapes = new Rectangle[Board.SIZE][Board.SIZE];
         for (int row = 0; row < Board.SIZE; row++) {
             for (int col = 0; col < Board.SIZE; col++) {
                 Rectangle cell = new Rectangle(CELL_SIZE, CELL_SIZE);
@@ -334,14 +351,65 @@ public class BoardController {
                 cell.setLayoutY(row * CELL_SIZE);
 
                 String state = board.getCell(new Position(row, col)).getState();
-                cell.setFill(state.equals(CellState.BARCO)
-                        ? Color.web("#415a77")   // celda con barco: se ve la flota del oponente
-                        : Color.web("#1b263b")); // celda vacía
-                cell.setStroke(Color.web("#00b4d8"));
+                cell.setFill(state.equals(CellState.BARCO) ? SHIP_COLOR : WATER_COLOR);
+                cell.setStroke(GRID_BORDER_COLOR);
 
+                cellShapes[row][col] = cell;
                 // Sin manejadores de eventos: el tablero es puramente informativo.
                 boardPane.getChildren().add(cell);
             }
         }
+    }
+
+    // ===================== MARCADO DE DISPAROS (HU-2 / HU-4) =====================
+
+    /**
+     * Pinta en la celda (row, col) de este tablero el resultado de un disparo
+     * (agua, tocado u hundido). Se usa tanto para los disparos del jugador sobre
+     * el tablero principal (HU-2) como para los disparos de la máquina sobre el
+     * tablero de posición del jugador (HU-4).
+     *
+     * @param row    fila de la celda impactada
+     * @param col    columna de la celda impactada
+     * @param result resultado del disparo ({@link ShotResult})
+     */
+    public void markCell(int row, int col, String result) {
+        if (cellShapes == null) return;
+        Rectangle cell = cellShapes[row][col];
+        if (cell == null) return;
+
+        String symbol;
+        Color symbolColor;
+
+        switch (result) {
+            case ShotResult.AGUA -> {
+                symbol = "X";
+                symbolColor = MISS_SYMBOL_COLOR;
+                cell.setFill(WATER_COLOR);
+            }
+            case ShotResult.TOCADO -> {
+                symbol = "●";
+                symbolColor = HIT_SYMBOL_COLOR;
+                cell.setFill(HIT_COLOR);
+            }
+            case ShotResult.HUNDIDO -> {
+                symbol = "🔥";
+                symbolColor = SUNK_SYMBOL_COLOR;
+                cell.setFill(SUNK_COLOR);
+            }
+            default -> {
+                symbol = "";
+                symbolColor = MISS_SYMBOL_COLOR;
+            }
+        }
+
+        Text mark = new Text(symbol);
+        mark.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        mark.setFill(symbolColor);
+        mark.setLayoutX(cell.getLayoutX() + CELL_SIZE / 2.0 - 8);
+        mark.setLayoutY(cell.getLayoutY() + CELL_SIZE / 2.0 + 6);
+        boardPane.getChildren().add(mark);
+
+        cell.setOnMouseClicked(null);
     }
 }
