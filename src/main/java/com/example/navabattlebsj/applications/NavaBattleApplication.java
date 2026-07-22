@@ -29,6 +29,10 @@ public class NavaBattleApplication extends Application {
             );
             stageWindow.setScene(scene);
             stageWindow.setTitle(title);
+            stageWindow.setMinWidth(950);
+            stageWindow.setMinHeight(750);
+            stageWindow.setMaximized(true);
+
             stageWindow.show();
             return loader.getController();
         } catch (IOException e) {

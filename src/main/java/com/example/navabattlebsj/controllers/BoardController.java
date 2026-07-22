@@ -8,7 +8,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -18,6 +18,7 @@ import javafx.scene.text.Font;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
 /**
@@ -53,7 +54,7 @@ public class BoardController {
     private Pane boardPane;
 
     @FXML
-    private HBox shipsContainer;
+    private FlowPane shipsContainer;
 
     @FXML
     private Button readyButton;
@@ -319,6 +320,10 @@ public class BoardController {
     public void enableShooting() {
         boardPane.setDisable(false);
     }
+
+    // Bloquea el disparo, usado cuando le toca jugar a la máquina
+    // (incluyendo al restaurar una partida guardada en ese punto, HU-6).
+    public void disableShooting() { boardPane.setDisable(true); }
 
     // ===================== MODO SOLO LECTURA (HU-3) =====================
 

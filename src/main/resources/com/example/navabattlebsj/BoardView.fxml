@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.VBox?>
 
@@ -10,7 +10,7 @@
       spacing="15" alignment="CENTER">
 
     <Pane fx:id="boardPane" prefWidth="400" prefHeight="400"/>
-    <HBox fx:id="shipsContainer" spacing="10" alignment="CENTER"/>
+    <FlowPane fx:id="shipsContainer" prefWidth="10" hgap="10" vgap="10" alignment="CENTER"/>
     <Button fx:id="readyButton" text="Listo" styleClass="button-primary" disable="true" onAction="#handleReady"/>
 
 </VBox>

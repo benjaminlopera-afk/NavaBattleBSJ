@@ -72,6 +72,65 @@ public class GameController {
     }
 
     /**
+     * HU-6: restaura una partida previamente guardada y reconstruye la
+     * pantalla de juego en el punto exacto donde había quedado: ambos
+     * tableros con sus barcos y disparos ya registrados, respetando de
+     * quién era el turno al momento de guardar.
+     *
+     * @param savedGame partida restaurada desde {@link SaveFacade#loadGame()}
+     */
+    public void resumeGame(Game savedGame) {
+        this.game = savedGame;
+
+        if (viewOpponentButton != null) {
+            viewOpponentButton.setDisable(true);
+            viewOpponentButton.setVisible(false);
+        }
+        if (startBattleButton != null) {
+            startBattleButton.setDisable(true);
+            startBattleButton.setVisible(false);
+        }
+
+        // Tablero de posición del jugador: solo lectura, mostrando su flota
+        // y los disparos que ya había recibido de la máquina.
+        positionBoardController.setUpReadOnly(game.getHuman().getPositionBoard());
+        redrawShots(positionBoardController, game.getHuman().getPositionBoard());
+
+        // Tablero principal: modo disparo sobre la máquina, mostrando los
+        // disparos que el jugador ya había hecho antes de guardar.
+        mainBoardController.setUpShooting(
+                game.getMachine().getPositionBoard(),
+                this::autoSave,
+                this::onHumanTurnEnded,
+                this::onHumanVictory
+        );
+        redrawShots(mainBoardController, game.getMachine().getPositionBoard());
+
+        if  (game.isHumanTurn()) {
+            mainBoardController.enableShooting();
+            statusLabel.setText("Partida restaurada. Tu turno: dispara en el tablero principal.");
+        } else {
+            mainBoardController.disableShooting();
+            statusLabel.setText("Partida restaurada. Turno de la máquina...");
+            startMachineTurn();
+        }
+    }
+
+    // Recorre un tablero y repinta en el controlador dado las marcas de todos
+    // los disparos ya registrados (AGUA/TOCADO/HUNDIDO), usado al restaurar
+    // una partida guardada (HU-6).
+    private void redrawShots(BoardController controller, Board board) {
+        for (int row = 0; row < Board.SIZE; row++) {
+            for (int col = 0; col < Board.SIZE; col++) {
+                String state = board.getCell(new Position(row, col)).getState();
+                if (state.equals(CellState.AGUA) || state.equals(CellState.TOCADO) || state.equals(CellState.HUNDIDO)) {
+                    controller.markCell(row, col, state);
+                }
+            }
+        }
+    }
+
+    /**
      * Se ejecuta cuando el jugador humano termina de colocar su flota.
      * Coloca la flota de la máquina de forma aleatoria (HU-4) y habilita las
      * opciones de verificación (HU-3) antes de comenzar la batalla.
@@ -162,9 +221,15 @@ public class GameController {
         game.setHumanTurn(false);
         if (game.isFinished()) return;
         statusLabel.setText("Turno de la máquina...");
+        startMachineTurn();
+    }
 
+    // Programa el primer disparo de la máquina tras una breve pausa. Se usa
+    // tanto tras un turno normal del humano (onHumanTurnEnded) como al
+    // restaurar una partida guardada donde ya le tocaba jugar a la máquina (HU-6).
+    private void startMachineTurn() {
         PauseTransition initialPause = new PauseTransition(MACHINE_SHOT_DELAY);
-        initialPause.setOnFinished(e -> fireMachineShot());
+        initialPause.setOnFinished((e -> fireMachineShot()));
         initialPause.play();
     }
 
