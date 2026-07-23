@@ -1,8 +1,11 @@
 package com.example.navabattlebsj.models;
 
+import java.io.Serializable;
 import java.util.List;
 
-public class Fleet {
+public class Fleet implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private List<Ship> ships;
 
     public Fleet(List<Ship> ships) {

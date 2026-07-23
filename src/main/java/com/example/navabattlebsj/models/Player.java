@@ -2,7 +2,11 @@ package com.example.navabattlebsj.models;
 
 import com.example.navabattlebsj.patterns.ShipFactory;
 
-public abstract class Player {
+import java.io.Serializable;
+
+public abstract class Player implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String nickname;
     private Board positionBoard;
     private Fleet fleet;

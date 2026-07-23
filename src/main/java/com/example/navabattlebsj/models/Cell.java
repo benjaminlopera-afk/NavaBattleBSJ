@@ -1,6 +1,10 @@
 package com.example.navabattlebsj.models;
 
-public class Cell {
+import java.io.Serializable;
+
+public class Cell implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private Position position;
     private String state;
 

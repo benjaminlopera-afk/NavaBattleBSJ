@@ -8,7 +8,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -53,7 +53,7 @@ public class BoardController {
     private Pane boardPane;
 
     @FXML
-    private HBox shipsContainer;
+    private FlowPane shipsContainer;
 
     @FXML
     private Button readyButton;
@@ -69,6 +69,7 @@ public class BoardController {
     private double dragOffsetY;
 
     private Runnable onPlacementComplete;
+    private Runnable onShotRegistered;
     private Runnable onTurnEnd;
     private Consumer<String> onVictory;
 
@@ -256,12 +257,15 @@ public class BoardController {
     /**
      * Configura este tablero en modo disparo sobre el tablero del oponente.
      *
-     * @param enemyBoard tablero del oponente a atacar
-     * @param onTurnEnd  callback ejecutado cuando el disparo es agua (termina el turno)
-     * @param onVictory  callback ejecutado cuando se hunde toda la flota enemiga
+     * @param enemyBoard       tablero del oponente a atacar
+     * @param onShotRegistered callback ejecutado tras CUALQUIER disparo válido
+     *                         (agua, tocado o hundido), usado para el autoguardado (HU-5)
+     * @param onTurnEnd        callback ejecutado cuando el disparo es agua (termina el turno)
+     * @param onVictory        callback ejecutado cuando se hunde toda la flota enemiga
      */
-    public void setUpShooting(Board enemyBoard, Runnable onTurnEnd, Consumer<String> onVictory) {
+    public void setUpShooting(Board enemyBoard, Runnable onShotRegistered, Runnable onTurnEnd, Consumer<String> onVictory) {
         this.board = enemyBoard;
+        this.onShotRegistered = onShotRegistered;
         this.onTurnEnd = onTurnEnd;
         this.onVictory = onVictory;
         drawShootableGrid();
@@ -294,6 +298,10 @@ public class BoardController {
             String result = board.receiveShot(new Position(row, col));
             markCell(row, col, result);
 
+            // Autoguardado (HU-5): se dispara tras CUALQUIER disparo válido,
+            // sin importar si fue agua, tocado o hundido.
+            if (onShotRegistered != null) onShotRegistered.run();
+
             if (board.isFleetSunk()) {
                 if (onVictory != null) onVictory.accept("¡Has hundido toda la flota enemiga!");
                 return;
@@ -314,6 +322,12 @@ public class BoardController {
     // Habilita de nuevo el disparo cuando vuelve a ser el turno del jugador.
     public void enableShooting() {
         boardPane.setDisable(false);
+    }
+
+    // Bloquea el disparo, usado cuando le toca jugar a la máquina
+    // (incluyendo al restaurar una partida guardada en ese punto, HU-6).
+    public void disableShooting() {
+        boardPane.setDisable(true);
     }
 
     // ===================== MODO SOLO LECTURA (HU-3) =====================
