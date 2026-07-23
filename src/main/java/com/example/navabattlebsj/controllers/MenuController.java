@@ -1,11 +1,77 @@
 package com.example.navabattlebsj.controllers;
 
 import com.example.navabattlebsj.applications.NavaBattleApplication;
+import com.example.navabattlebsj.models.Game;
+import com.example.navabattlebsj.patterns.SaveFacade;
 import com.example.navabattlebsj.utils.Paths;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 
+import java.io.IOException;
+import java.util.Optional;
+
+/**
+ * Controlador del menú principal. Además de las opciones de siempre
+ * (nueva partida, cargar partida, reglas), implementa HU-6: al iniciar la
+ * aplicación consulta automáticamente si existe una partida guardada sin
+ * terminar y le da al jugador la opción de continuarla o empezar de cero.
+ */
 public class MenuController {
+
+    private final SaveFacade saveFacade = new SaveFacade();
+
+    @FXML
+    public void initialize() {
+        checkForSavedGame();
+    }
+
+    /**
+     * HU-6: si existe una partida guardada y no ha terminado, se le pregunta
+     * al jugador si desea continuarla o iniciar una nueva. Si la partida
+     * guardada ya había terminado, se descarta automáticamente sin preguntar
+     * y el flujo normal de "Nueva Partida" queda disponible.
+     */
+    private void checkForSavedGame() {
+        if (!saveFacade.hasSavedGame()) {
+            return;
+        }
+
+        Game savedGame;
+        try {
+            savedGame = saveFacade.loadGame();
+        } catch (IOException | ClassNotFoundException e) {
+            saveFacade.deleteSave();
+            return;
+        }
+
+        if (savedGame.isFinished()) {
+            saveFacade.deleteSave();
+            return;
+        }
+
+        Optional<ButtonType> choice = askContinueOrNewGame();
+
+        if (choice.isPresent() && choice.get().getText().equals("Continuar partida")) {
+            GameController controller = NavaBattleApplication.setScene(Paths.GAME_VIEW, "NavaBattle - Batalla en curso");
+            controller.resumeGame(savedGame);
+        } else {
+            saveFacade.deleteSave();
+        }
+    }
+
+    private Optional<ButtonType> askContinueOrNewGame() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Partida guardada encontrada");
+        alert.setHeaderText("Tienes una partida en curso");
+        alert.setContentText("¿Deseas continuar tu partida guardada o iniciar una nueva?");
+
+        ButtonType continueButton = new ButtonType("Continuar partida");
+        ButtonType newGameButton = new ButtonType("Nueva partida");
+        alert.getButtonTypes().setAll(continueButton, newGameButton);
+
+        return alert.showAndWait();
+    }
 
     @FXML
     private void handleNewGame() {
@@ -13,9 +79,31 @@ public class MenuController {
         controller.startNewGame();
     }
 
+    /**
+     * HU-6: permite cargar manualmente la última partida guardada desde el
+     * menú, sin esperar a la consulta automática de {@link #initialize()}.
+     */
     @FXML
     private void handleLoadGame() {
-        // Se implementa en el HU-6
+        if (!saveFacade.hasSavedGame()) {
+            showInfo("Sin partida guardada", "No hay ninguna partida guardada para cargar.");
+            return;
+        }
+
+        try {
+            Game savedGame = saveFacade.loadGame();
+
+            if (savedGame.isFinished()) {
+                saveFacade.deleteSave();
+                showInfo("Partida finalizada", "La última partida guardada ya había terminado. Inicia una nueva.");
+                return;
+            }
+
+            GameController controller = NavaBattleApplication.setScene(Paths.GAME_VIEW, "NavaBattle - Batalla en curso");
+            controller.resumeGame(savedGame);
+        } catch (IOException | ClassNotFoundException e) {
+            showInfo("Error al cargar", "No se pudo cargar la partida guardada.");
+        }
     }
 
     @FXML
@@ -41,6 +129,14 @@ public class MenuController {
 
                 Gana quien hunda toda la flota del oponente primero.
                 """);
+        alert.showAndWait();
+    }
+
+    private void showInfo(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
         alert.showAndWait();
     }
 }
