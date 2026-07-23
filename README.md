@@ -109,35 +109,27 @@ src
 * ✔ Historia de Usuario 2: Realización de disparos.
 * ✔ Historia de Usuario 3: Visualización del tablero de posición del oponente.
 * ✔ Historia de Usuario 4: Implementación de la inteligencia artificial de la máquina.
-* ⏳ Historia de Usuario 5: Guardado automático del juego.
-* ⏳ Historia de Usuario 6: Inicio del juego.
-* ⏳ Patrón de diseño estructural y de comportamiento (creacional ya implementado: `ShipFactory`).
-* ⏳ Pruebas unitarias con JUnit.
+* ✔ Historia de Usuario 5: Guardado automático del juego.
+* ✔ Historia de Usuario 6: Inicio del juego.
+* ✔ Patrón de diseño estructural y de comportamiento (creacional ya implementado: `ShipFactory`).
+* ✔ Pruebas unitarias con JUnit.
 
 ---
 
 ## Estado del proyecto
 
-| Historia de Usuario | Estado | Notas |
-| --- | --- | --- |
+| Historia de Usuario | Estado      | Notas |
+| --- |-------------| --- |
 | HU-1 Colocación de barcos | ✔ Completa | Drag & drop, rotación, validación de posición |
 | HU-2 Realización de disparos | ✔ Completa | Marcas en tiempo real, cambio de turno |
 | HU-3 Visualización del tablero del oponente | ✔ Completa | Modal de solo lectura, disponible solo antes de la batalla |
 | HU-4 IA de la máquina | ✔ Completa | Colocación y disparo aleatorio, animado, sin repetición |
-| HU-5 Guardado automático | ⏳ Pendiente | Requiere serialización de tableros + archivo plano |
-| HU-6 Inicio del juego | ⏳ Pendiente | Cargar partida guardada vs. nueva partida |
-
----
-
-## Próximos pasos
-* Implementar `SerializationManager` y `TextFileManager` para el guardado automático (HU-5).
-* Definir el patrón estructural y de comportamiento pendientes sobre `patterns/` (`SaveFacade` como Facade, `TurnStrategy` como Strategy para alternar turno humano/máquina).
-* Agregar pantalla de selección "Nueva partida / Cargar partida" en el menú (HU-6).
-* Sumar pruebas unitarias con JUnit para `Board`, `Ship` y `Game`.
+| HU-5 Guardado automático | ✔ Completa | Requiere serialización de tableros + archivo plano |
+| HU-6 Inicio del juego | ✔ Completa | Cargar partida guardada vs. nueva partida |
 
 ---
 
 ## Autores
 * **Benjamín Lopera** - 2515144
 * **Sebastián Martínez** - 2519817
-* **Jhony Alexander Moreno Gómez** - 2525112
+* **Jhonny Alexander Moreno Florez** - 2522112
