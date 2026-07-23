@@ -15,6 +15,8 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Font;
+import javafx.scene.image.Image;
+import javafx.scene.paint.ImagePattern;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -135,7 +137,7 @@ public class BoardController {
         double height = horizontal ? CELL_SIZE : ship.getSize() * CELL_SIZE;
 
         Rectangle shape = new Rectangle(width, height);
-        shape.setFill(SHIP_COLOR);
+        shape.setFill(new ImagePattern(getShipImage(ship)));
         shape.setStroke(GRID_BORDER_COLOR);
         return shape;
     }
@@ -203,7 +205,6 @@ public class BoardController {
     private void snapShipToBoard(Rectangle shape, Position position) {
         shape.setLayoutX(position.getColumn() * CELL_SIZE);
         shape.setLayoutY(position.getRow() * CELL_SIZE);
-        shape.setFill(SHIP_PLACED_COLOR);
     }
 
     private void disableDragging(Rectangle shape) {
@@ -231,6 +232,8 @@ public class BoardController {
         double oldHeight = shape.getHeight();
         shape.setWidth(oldHeight);
         shape.setHeight(oldWidth);
+
+        shape.setFill(new ImagePattern(getShipImage(ship)));
     }
 
     private void checkAllPlaced() {
@@ -358,20 +361,35 @@ public class BoardController {
     private void drawReadOnlyGrid() {
         boardPane.getChildren().clear();
         cellShapes = new Rectangle[Board.SIZE][Board.SIZE];
+
         for (int row = 0; row < Board.SIZE; row++) {
             for (int col = 0; col < Board.SIZE; col++) {
                 Rectangle cell = new Rectangle(CELL_SIZE, CELL_SIZE);
                 cell.setLayoutX(col * CELL_SIZE);
                 cell.setLayoutY(row * CELL_SIZE);
-
-                String state = board.getCell(new Position(row, col)).getState();
-                cell.setFill(state.equals(CellState.BARCO) ? SHIP_COLOR : WATER_COLOR);
+                cell.setFill(WATER_COLOR);
                 cell.setStroke(GRID_BORDER_COLOR);
-
                 cellShapes[row][col] = cell;
-                // Sin manejadores de eventos: el tablero es puramente informativo.
                 boardPane.getChildren().add(cell);
             }
+        }
+
+        for (Ship ship : board.getShips()) {
+            if (ship.getOccupiedPositions().isEmpty()) continue;
+
+            Position firstPos = ship.getOccupiedPositions().get(0);
+            boolean horizontal = ship.getOrientation().equals(Orientation.HORIZONTAL);
+
+            double width = horizontal ? ship.getSize() * CELL_SIZE : CELL_SIZE;
+            double height = horizontal ? CELL_SIZE : ship.getSize() * CELL_SIZE;
+
+            Rectangle shipShape = new Rectangle(width, height);
+            shipShape.setLayoutX((firstPos.getColumn() * CELL_SIZE));
+            shipShape.setLayoutY(firstPos.getRow() * CELL_SIZE);
+            shipShape.setFill(new ImagePattern(getShipImage(ship)));
+            shipShape.setStroke(GRID_BORDER_COLOR);
+
+            boardPane.getChildren().add(shipShape);
         }
     }
 
@@ -425,5 +443,19 @@ public class BoardController {
         boardPane.getChildren().add(mark);
 
         cell.setOnMouseClicked(null);
+    }
+
+    /**
+     * Asocia cada constante de ShipType con su respectivo archivo PNG.
+     */
+    private Image getShipImage(Ship ship) {
+        String imageName = switch (ship.getType()) {
+            case ShipType.PORTAAVIONES -> "portaaviones.png";
+            case ShipType.SUBMARINO -> "submarino.png";
+            case ShipType.DESTRUCTOR -> "destructor.png";
+            default                  -> "fragata.png";
+        };
+        String path = "/com/example/navabattlebsj/images/" + imageName;
+        return new Image(getClass().getResourceAsStream(path));
     }
 }
